@@ -263,7 +263,7 @@ class MainWindow(QMainWindow):
     log_signal = pyqtSignal(str)
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("YoutubeGO 4.4 - Experimental")
+        self.setWindowTitle("YoutubeGO 4.4 ")
         self.setGeometry(100, 100, 1280, 720)
         self.ffmpeg_found = False
         self.ffmpeg_path = ""
@@ -303,6 +303,11 @@ class MainWindow(QMainWindow):
         else:
             self.ffmpeg_found = False
             self.ffmpeg_path = ""
+    def show_notification(self, title, message):
+   
+        self.tray_icon.showMessage(title, message, QSystemTrayIcon.Information, 3000)
+   
+   
     def create_tray_icon(self):
         self.tray_icon = QSystemTrayIcon(self)
         icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
@@ -379,7 +384,7 @@ class MainWindow(QMainWindow):
         tb_layout = QHBoxLayout(top_bar)
         tb_layout.setContentsMargins(10, 5, 10, 5)
         tb_layout.setSpacing(10)
-        self.logo_label = QLabel("YoutubeGO 4.4 - Experimental")
+        self.logo_label = QLabel("YoutubeGO 4.4")
         self.logo_label.setFont(QFont("Arial", 14, QFont.Bold))
         tb_layout.addWidget(self.logo_label, alignment=Qt.AlignVCenter | Qt.AlignLeft)
         search_container = QWidget()
@@ -440,7 +445,7 @@ class MainWindow(QMainWindow):
     def create_page_home(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        lbl = QLabel(self._("Home Page - Welcome to YoutubeGO 4.4 - Experimental\n\n") + self._("New Features:\n") + self._("- Automatic cookie usage\n") + self._("- Modern rounded UI\n") + self._("- Large download fix\n") + self._("- In-app video playback with advanced controls\n") + self._("- Download speed control with ETA and speed info\n") + self._("- Enhanced download queue and scheduling\n\n") + self._("Github: https://github.com/Efeckc17\n") + self._("Instagram: toxi.dev\n") + self._("Developed by toxi360 under MIT License"))
+        lbl = QLabel(self._("Home Page - Welcome to YoutubeGO 4.4\n\n") + self._("New Features:\n") +self._("- Desktop Notifications\n") +self._("- Automatic cookie usage\n") + self._("- Modern rounded UI\n") + self._("- Large download fix\n") + self._("- In-app video playback with advanced controls\n") + self._("- Download speed control with ETA and speed info\n") + self._("- Enhanced download queue and scheduling\n\n") + self._("Github: https://github.com/Efeckc17\n") + self._("Instagram: toxi.dev\n") + self._("Developed by toxi360"))
         lbl.setFont(QFont("Arial", 16, QFont.Bold))
         layout.addWidget(lbl)
         layout.addStretch()
@@ -1074,18 +1079,24 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFormat(f"{int(percent)}%")
         speed_kb = speed / 1024 if speed else 0
         self.status_label.setText(self._("Downloading...") + f" {percent:.2f}% - {speed_kb:.2f} KB/s - ETA: {eta}s")
-    def update_status(self, row, st):
+    def update_status(self,row,st):
         if row is not None and row < self.queue_table.rowCount():
-            self.queue_table.setItem(row, 4, QTableWidgetItem(self._(st)))
-        self.status_label.setText(self._(st))
+            self.queue_table.setItem(row, 4, QTableWidgetItem(st))
+        self.status_label.setText(st)
+
         if "Error" in st:
             QMessageBox.critical(self, self._("Error"), st)
+            self.show_notification(self._("Error"), st)
         elif "Completed" in st:
-            user_choice = QMessageBox.question(self, self._("Download Completed"), self._("Open Download Folder?"), QMessageBox.Yes | QMessageBox.No)
-            if user_choice == QMessageBox.Yes:
-                self.open_download_folder()
+            self.show_notification(self._("Download Completed"), self._("Download has finished successfully."))
+            user_choice = QMessageBox.question(self, self._("Download Completed"), self._("Download has finished successfully. Open download folder?"), QMessageBox.Yes | QMessageBox.No)
+        if user_choice == QMessageBox.Yes:
+            self.open_download_folder()
+
         if row is not None and row in self.active_workers:
-            del self.active_workers[row]
+             del self.active_workers[row]
+            
+
     def open_download_folder(self):
         folder = self.user_profile.get_download_path()
         if platform.system() == "Windows":
