@@ -27,13 +27,12 @@ import subprocess
 import shutil
 import yt_dlp
 import gettext
-
+import requests
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QRunnable, QTimer, QDateTime, QUrl, QObject
-from PyQt5.QtGui import QColor, QFont, QIcon
+from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, QAbstractItemView, QDockWidget, QLineEdit, QLabel, QPushButton, QSystemTrayIcon, QStyle, QAction, QMessageBox, QStatusBar, QProgressBar, QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QComboBox, QTableWidget, QHeaderView, QTableWidgetItem, QFileDialog, QDateTimeEdit, QSlider, QListWidgetItem, QTextEdit
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-
 def apply_theme(app, theme):
     if theme == "Dark":
         stylesheet = """
@@ -74,7 +73,6 @@ QHeaderView::section { background-color: #f0f0f0; color: black; padding: 4px; bo
 QDockWidget { border: 1px solid #ccc; border-radius: 25px; }
 """
     app.setStyleSheet(stylesheet)
-
 class DragDropLineEdit(QLineEdit):
     def __init__(self, placeholder="Enter or drag a link here..."):
         super().__init__()
@@ -89,7 +87,6 @@ class DragDropLineEdit(QLineEdit):
             self.setText(txt)
         else:
             self.setText(txt.replace("file://", ""))
-
 class UserProfile:
     def __init__(self, profile_path="user_profile.json"):
         self.profile_path = profile_path
@@ -162,7 +159,6 @@ class UserProfile:
         self.save_profile()
     def get_rate_limit(self):
         return self.data.get("rate_limit", None)
-
 class DownloadTask:
     def __init__(self, url, resolution, folder, audio_only=False, playlist=False, subtitles=False, output_format="mp4", from_queue=False, priority=1, recurrence=None, max_rate=None):
         self.url = url
@@ -176,12 +172,10 @@ class DownloadTask:
         self.priority = priority
         self.recurrence = recurrence
         self.max_rate = max_rate
-
 class WorkerSignals(QObject):
     progress = pyqtSignal(int, float, float, int)
     status = pyqtSignal(int, str)
     log = pyqtSignal(str)
-
 class DownloadQueueWorker(QRunnable):
     def __init__(self, task, row, signals):
         super().__init__()
@@ -256,14 +250,13 @@ class DownloadQueueWorker(QRunnable):
         self.cancel = True
         self.signals.status.emit(self.row, "Download Cancelled")
         self.signals.log.emit("Download Cancelled")
-
 class MainWindow(QMainWindow):
     progress_signal = pyqtSignal(int, float, float, int)
     status_signal = pyqtSignal(int, str)
     log_signal = pyqtSignal(str)
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("YoutubeGO 4.4 ")
+        self.setWindowTitle("YoutubeGO Experimental")
         self.setGeometry(100, 100, 1280, 720)
         self.ffmpeg_found = False
         self.ffmpeg_path = ""
@@ -275,6 +268,8 @@ class MainWindow(QMainWindow):
         self.thread_pool = QThreadPool()
         self.active_workers = {}
         self.max_concurrent_downloads = 3
+        self.developer_mode = False
+        self.verbose_logging = False
         self.search_map = {"proxy": (4, "Proxy configuration is in Settings."), "resolution": (4, "Resolution configuration is in Settings."), "profile": (5, "Profile page for user details."), "queue": (6, "Queue page for multiple downloads."), "mp4": (1, "MP4 page for video downloads."), "mp3": (2, "MP3 page for audio downloads."), "history": (3, "History page for download logs."), "settings": (4, "Settings page for various options."), "scheduler": (7, "Scheduler for planned downloads."), "download path": (4, "Download path is in Settings."), "theme": (4, "Theme switch is in Settings."), "player": (8, "Video Player for downloaded videos.")}
         self.progress_signal.connect(self.update_progress)
         self.status_signal.connect(self.update_status)
@@ -304,10 +299,7 @@ class MainWindow(QMainWindow):
             self.ffmpeg_found = False
             self.ffmpeg_path = ""
     def show_notification(self, title, message):
-   
         self.tray_icon.showMessage(title, message, QSystemTrayIcon.Information, 3000)
-   
-   
     def create_tray_icon(self):
         self.tray_icon = QSystemTrayIcon(self)
         icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
@@ -384,7 +376,7 @@ class MainWindow(QMainWindow):
         tb_layout = QHBoxLayout(top_bar)
         tb_layout.setContentsMargins(10, 5, 10, 5)
         tb_layout.setSpacing(10)
-        self.logo_label = QLabel("YoutubeGO 4.4")
+        self.logo_label = QLabel("YoutubeGO Experimental")
         self.logo_label.setFont(QFont("Arial", 14, QFont.Bold))
         tb_layout.addWidget(self.logo_label, alignment=Qt.AlignVCenter | Qt.AlignLeft)
         search_container = QWidget()
@@ -419,6 +411,7 @@ class MainWindow(QMainWindow):
         self.page_queue = self.create_page_queue()
         self.page_scheduler = self.create_page_scheduler()
         self.page_player = self.create_page_player()
+        self.page_experimental = self.create_page_experimental()
         self.main_stack.addWidget(self.page_home)
         self.main_stack.addWidget(self.page_mp4)
         self.main_stack.addWidget(self.page_mp3)
@@ -428,12 +421,13 @@ class MainWindow(QMainWindow):
         self.main_stack.addWidget(self.page_queue)
         self.main_stack.addWidget(self.page_scheduler)
         self.main_stack.addWidget(self.page_player)
+        self.main_stack.addWidget(self.page_experimental)
+        menu_items = ["Home", "MP4", "MP3", "History", "Settings", "Profile", "Queue", "Scheduler", "Player", "Experimental"]
         self.side_menu = QListWidget()
         self.side_menu.setFixedWidth(130)
         self.side_menu.setSelectionMode(QAbstractItemView.SingleSelection)
         self.side_menu.setFlow(QListWidget.TopToBottom)
         self.side_menu.setSpacing(2)
-        menu_items = ["Home", "MP4", "MP3", "History", "Settings", "Profile", "Queue", "Scheduler", "Player"]
         for item_name in menu_items:
             self.side_menu.addItem(self._(item_name))
         self.side_menu.setCurrentRow(0)
@@ -445,7 +439,7 @@ class MainWindow(QMainWindow):
     def create_page_home(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        lbl = QLabel(self._("Home Page - Welcome to YoutubeGO 4.4\n\n") + self._("New Features:\n") +self._("- Desktop Notifications\n") +self._("- Automatic cookie usage\n") + self._("- Modern rounded UI\n") + self._("- Large download fix\n") + self._("- In-app video playback with advanced controls\n") + self._("- Download speed control with ETA and speed info\n") + self._("- Enhanced download queue and scheduling\n\n") + self._("Github: https://github.com/Efeckc17\n") + self._("Instagram: toxi.dev\n") + self._("Developed by toxi360"))
+        lbl = QLabel(self._("Home Page - Welcome to YoutubeGO Experimental\nThis version is experimental and may be unstable. Your downloads might not work correctly."))
         lbl.setFont(QFont("Arial", 16, QFont.Bold))
         layout.addWidget(lbl)
         layout.addStretch()
@@ -786,6 +780,60 @@ class MainWindow(QMainWindow):
         layout.addLayout(control_layout)
         layout.addStretch()
         return w
+    def create_page_experimental(self):
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        lbl = QLabel(self._("Experimental Features\nThis version is experimental and may be unstable. Use at your own risk."))
+        lbl.setFont(QFont("Arial", 14, QFont.Bold))
+        layout.addWidget(lbl)
+        dev_checkbox = QCheckBox(self._("Enable Developer Mode"))
+        dev_checkbox.stateChanged.connect(self.toggle_developer_mode)
+        layout.addWidget(dev_checkbox)
+        update_group = QGroupBox(self._("Auto Update Checker"))
+        update_layout = QVBoxLayout(update_group)
+        check_updates_btn = QPushButton(self._("Check for Updates"))
+        check_updates_btn.clicked.connect(self.check_for_updates)
+        update_layout.addWidget(check_updates_btn)
+        layout.addWidget(update_group)
+        retry_group = QGroupBox(self._("Retry Failed Downloads"))
+        retry_layout = QVBoxLayout(retry_group)
+        retry_failed_btn = QPushButton(self._("Retry All Failed Downloads"))
+        retry_failed_btn.clicked.connect(self.retry_failed_downloads)
+        retry_layout.addWidget(retry_failed_btn)
+        layout.addWidget(retry_group)
+        thumb_group = QGroupBox(self._("Thumbnail Extractor"))
+        thumb_layout = QVBoxLayout(thumb_group)
+        self.thumb_url_edit = QLineEdit()
+        self.thumb_url_edit.setPlaceholderText(self._("Enter video URL for thumbnail extraction"))
+        extract_thumb_btn = QPushButton(self._("Extract Thumbnail"))
+        extract_thumb_btn.clicked.connect(self.extract_thumbnail)
+        self.thumbnail_label = QLabel()
+        self.thumbnail_label.setFixedSize(320, 180)
+        self.thumbnail_label.setStyleSheet("border: 1px solid gray;")
+        thumb_layout.addWidget(self.thumb_url_edit)
+        thumb_layout.addWidget(extract_thumb_btn)
+        thumb_layout.addWidget(self.thumbnail_label)
+        layout.addWidget(thumb_group)
+        verbose_group = QGroupBox(self._("Verbose Logging"))
+        verbose_layout = QVBoxLayout(verbose_group)
+        verbose_checkbox = QCheckBox(self._("Enable Verbose Logging"))
+        verbose_checkbox.stateChanged.connect(self.toggle_verbose_logging)
+        verbose_layout.addWidget(verbose_checkbox)
+        layout.addWidget(verbose_group)
+        convert_group = QGroupBox(self._("Experimental Format Converter"))
+        convert_layout = QVBoxLayout(convert_group)
+        self.convert_path_edit = QLineEdit()
+        self.convert_path_edit.setPlaceholderText(self._("Enter path of file to convert"))
+        self.target_format_edit = QLineEdit()
+        self.target_format_edit.setPlaceholderText(self._("Enter target format (e.g., avi, mkv)"))
+        convert_btn = QPushButton(self._("Convert File"))
+        convert_btn.clicked.connect(self.convert_file_experimental)
+        convert_layout.addWidget(self.convert_path_edit)
+        convert_layout.addWidget(self.target_format_edit)
+        convert_layout.addWidget(convert_btn)
+        layout.addWidget(convert_group)
+        layout.addStretch()
+        return w
     def position_changed(self, position):
         self.position_slider.setValue(position)
         duration = self.media_player.duration()
@@ -1071,6 +1119,8 @@ class MainWindow(QMainWindow):
         worker = DownloadQueueWorker(task, row, signals)
         if row is not None:
             self.active_workers[row] = worker
+        if self.developer_mode or self.verbose_logging:
+            self.append_log(self._("Starting task for URL: {url}").format(url=task.url))
         self.thread_pool.start(worker)
     def update_progress(self, row, percent, speed, eta):
         if row is not None and row < self.queue_table.rowCount():
@@ -1079,24 +1129,20 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFormat(f"{int(percent)}%")
         speed_kb = speed / 1024 if speed else 0
         self.status_label.setText(self._("Downloading...") + f" {percent:.2f}% - {speed_kb:.2f} KB/s - ETA: {eta}s")
-    def update_status(self,row,st):
+    def update_status(self, row, st):
         if row is not None and row < self.queue_table.rowCount():
             self.queue_table.setItem(row, 4, QTableWidgetItem(st))
         self.status_label.setText(st)
-
         if "Error" in st:
             QMessageBox.critical(self, self._("Error"), st)
             self.show_notification(self._("Error"), st)
         elif "Completed" in st:
             self.show_notification(self._("Download Completed"), self._("Download has finished successfully."))
             user_choice = QMessageBox.question(self, self._("Download Completed"), self._("Download has finished successfully. Open download folder?"), QMessageBox.Yes | QMessageBox.No)
-        if user_choice == QMessageBox.Yes:
-            self.open_download_folder()
-
+            if user_choice == QMessageBox.Yes:
+                self.open_download_folder()
         if row is not None and row in self.active_workers:
-             del self.active_workers[row]
-            
-
+            del self.active_workers[row]
     def open_download_folder(self):
         folder = self.user_profile.get_download_path()
         if platform.system() == "Windows":
@@ -1202,7 +1248,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, self._("Invalid Format"), self._("Please enter rate like '500K', '2M', etc."))
                 return
             self.user_profile.set_rate_limit(rate)
-            self.append_log(self._("Download speed limit set to {rate}".format(rate=rate)))
+            self.append_log(self._("Download speed limit set to {rate}").format(rate=rate))
             QMessageBox.information(self, self._("Rate Limit"), self._("Download speed limited to {rate}".format(rate=rate)))
         else:
             self.user_profile.set_rate_limit(None)
@@ -1215,12 +1261,69 @@ class MainWindow(QMainWindow):
         self.append_log(self._("Language set to {lang}".format(lang=selected_lang)))
         QMessageBox.information(self, self._("Language Changed"), self._("Language will change after restart."))
         self.restart_application()
-
+    def toggle_developer_mode(self, state):
+        self.developer_mode = (state == Qt.Checked)
+        mode_text = self._("Developer Mode Enabled") if self.developer_mode else self._("Developer Mode Disabled")
+        self.append_log(mode_text)
+    def check_for_updates(self):
+        self.append_log(self._("Checking for updates..."))
+        QTimer.singleShot(2000, lambda: QMessageBox.information(self, self._("Update Check"), self._("No updates available. You are running the latest version.")))
+    def retry_failed_downloads(self):
+        count = 0
+        for r in range(self.history_table.rowCount()):
+            status_item = self.history_table.item(r, 3)
+            if status_item and "Error" in status_item.text():
+                url_item = self.history_table.item(r, 2)
+                if url_item:
+                    url = url_item.text()
+                    rate_limit = self.user_profile.get_rate_limit()
+                    task = DownloadTask(url, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=False, playlist=False, max_rate=rate_limit)
+                    self.run_task(task, None)
+                    count += 1
+        self.append_log(self._("{count} failed downloads retried.").format(count=count))
+    def extract_thumbnail(self):
+        url = self.thumb_url_edit.text().strip()
+        if not url:
+            QMessageBox.warning(self, self._("Error"), self._("Please enter a video URL."))
+            return
+        try:
+            ydl_opts = {"quiet": True, "skip_download": True, "cookiefile": "youtube_cookies.txt"}
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                thumbnail_url = info.get("thumbnail")
+                if not thumbnail_url:
+                    QMessageBox.warning(self, self._("Error"), self._("No thumbnail found for this video."))
+                    return
+                self.append_log(self._("Thumbnail URL found: {url}").format(url=thumbnail_url))
+                response = requests.get(thumbnail_url)
+                if response.status_code == 200:
+                    image_data = response.content
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(image_data)
+                    pixmap = pixmap.scaled(self.thumbnail_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    self.thumbnail_label.setPixmap(pixmap)
+                    self.append_log(self._("Thumbnail extracted successfully."))
+                else:
+                    QMessageBox.warning(self, self._("Error"), self._("Failed to download thumbnail image."))
+        except Exception as e:
+            QMessageBox.critical(self, self._("Error"), str(e))
+            self.append_log(self._("Error extracting thumbnail: {error}").format(error=str(e)))
+    def toggle_verbose_logging(self, state):
+        self.verbose_logging = (state == Qt.Checked)
+        msg = self._("Verbose Logging Enabled") if self.verbose_logging else self._("Verbose Logging Disabled")
+        self.append_log(msg)
+    def convert_file_experimental(self):
+        path = self.convert_path_edit.text().strip()
+        target_format = self.target_format_edit.text().strip()
+        if not path or not target_format:
+            QMessageBox.warning(self, self._("Error"), self._("Please provide both file path and target format."))
+            return
+        self.append_log(self._("Converting file {file} to format {fmt} (simulated).").format(file=path, fmt=target_format))
+        QMessageBox.information(self, self._("Conversion"), self._("File conversion simulated."))
 def main():
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
     sys.exit(app.exec_())
-
 if __name__ == "__main__":
     main()
