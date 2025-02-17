@@ -35,7 +35,7 @@
   
 - **Developer & Verbose Logging Modes:**
   - Enable developer mode and verbose logging for extended functionality.
-
+![YoutubeGO Exp](screenshot.png)
 ## Installation
 
 ### Prerequisites
