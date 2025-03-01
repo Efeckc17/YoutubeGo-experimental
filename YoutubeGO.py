@@ -25,53 +25,138 @@ import json
 import platform
 import subprocess
 import shutil
+import time
+import requests
 import yt_dlp
 import gettext
-import requests
+from yt_dlp.utils import DownloadError
 from PyQt5.QtCore import Qt, pyqtSignal, QThreadPool, QRunnable, QTimer, QDateTime, QUrl, QObject
-from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QListWidget, QAbstractItemView, QDockWidget, QLineEdit, QLabel, QPushButton, QSystemTrayIcon, QStyle, QAction, QMessageBox, QStatusBar, QProgressBar, QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QComboBox, QTableWidget, QHeaderView, QTableWidgetItem, QFileDialog, QDateTimeEdit, QSlider, QListWidgetItem, QTextEdit
+from PyQt5.QtGui import QColor, QFont, QPixmap
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
+    QListWidget, QAbstractItemView, QDockWidget, QLineEdit, QLabel, QPushButton,
+    QSystemTrayIcon, QStyle, QAction, QMessageBox, QStatusBar, QProgressBar, QCheckBox,
+    QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QComboBox, QTableWidget,
+    QHeaderView, QTableWidgetItem, QFileDialog, QDateTimeEdit, QSlider, QListWidgetItem, QTextEdit
+)
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-
 
 def apply_theme(app, theme):
     if theme == "Dark":
         s = """
 QMainWindow { background-color: #181818; border-radius: 25px; }
-QLabel, QLineEdit, QPushButton, QListWidget, QTextEdit, QTableWidget, QComboBox, QCheckBox { color: #ffffff; background-color: #202020; border: none; border-radius: 25px; }
+QLabel, QLineEdit, QPushButton, QListWidget, QTextEdit, QTableWidget, QComboBox, QCheckBox {
+    color: #ffffff;
+    background-color: #202020;
+    border: none;
+    border-radius: 25px;
+}
 QLineEdit { border: 1px solid #333; padding: 6px; }
-QPushButton { background-color: #cc0000; padding: 8px 12px; border-radius: 25px; }
+QPushButton {
+    background-color: #cc0000;
+    padding: 8px 12px;
+    border-radius: 25px;
+}
 QPushButton:hover { background-color: #b30000; }
 QListWidget::item { padding: 10px; border-radius: 25px; }
-QListWidget::item:selected { background-color: #333333; border-left: 3px solid #cc0000; border-radius: 25px; }
-QProgressBar { background-color: #333333; text-align: center; color: #ffffff; font-weight: bold; border-radius: 25px; }
+QListWidget::item:selected {
+    background-color: #333333;
+    border-left: 3px solid #cc0000;
+    border-radius: 25px;
+}
+QProgressBar {
+    background-color: #333333;
+    text-align: center;
+    color: #ffffff;
+    font-weight: bold;
+    border-radius: 25px;
+}
 QProgressBar::chunk { background-color: #cc0000; border-radius: 25px; }
-QMenuBar { background-color: #181818; color: #ffffff; border-radius: 25px; }
-QMenuBar::item:selected { background-color: #333333; border-radius: 25px; }
-QMenu { background-color: #202020; color: #ffffff; border-radius: 25px; }
-QMenu::item:selected { background-color: #333333; border-radius: 25px; }
+QMenuBar {
+    background-color: #181818;
+    color: #ffffff;
+    border-radius: 25px;
+}
+QMenuBar::item:selected {
+    background-color: #333333;
+    border-radius: 25px;
+}
+QMenu {
+    background-color: #202020;
+    color: #ffffff;
+    border-radius: 25px;
+}
+QMenu::item:selected {
+    background-color: #333333;
+    border-radius: 25px;
+}
 QTableWidget { gridline-color: #444444; border: 1px solid #333; border-radius: 25px; }
-QHeaderView::section { background-color: #333333; color: white; padding: 4px; border: 1px solid #444444; border-radius: 25px; }
+QHeaderView::section {
+    background-color: #333333;
+    color: white;
+    padding: 4px;
+    border: 1px solid #444444;
+    border-radius: 25px;
+}
 QDockWidget { border: 1px solid #333333; border-radius: 25px; }
 """
     else:
         s = """
 QMainWindow { background-color: #f2f2f2; border-radius: 25px; }
-QLabel, QLineEdit, QPushButton, QListWidget, QTextEdit, QTableWidget, QComboBox, QCheckBox { color: #000000; background-color: #ffffff; border: 1px solid #ccc; border-radius: 25px; }
+QLabel, QLineEdit, QPushButton, QListWidget, QTextEdit, QTableWidget, QComboBox, QCheckBox {
+    color: #000000;
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 25px;
+}
 QLineEdit { border: 1px solid #ccc; padding: 6px; }
-QPushButton { background-color: #e0e0e0; padding: 8px 12px; border-radius: 25px; }
+QPushButton {
+    background-color: #e0e0e0;
+    padding: 8px 12px;
+    border-radius: 25px;
+}
 QPushButton:hover { background-color: #cccccc; }
 QListWidget::item { padding: 10px; border-radius: 25px; }
-QListWidget::item:selected { background-color: #ddd; border-left: 3px solid #888; border-radius: 25px; }
-QProgressBar { background-color: #ddd; text-align: center; color: #000000; font-weight: bold; border-radius: 25px; }
+QListWidget::item:selected {
+    background-color: #ddd;
+    border-left: 3px solid #888;
+    border-radius: 25px;
+}
+QProgressBar {
+    background-color: #ddd;
+    text-align: center;
+    color: #000000;
+    font-weight: bold;
+    border-radius: 25px;
+}
 QProgressBar::chunk { background-color: #888; border-radius: 25px; }
-QMenuBar { background-color: #ebebeb; color: #000; border-radius: 25px; }
-QMenuBar::item:selected { background-color: #dcdcdc; border-radius: 25px; }
-QMenu { background-color: #fff; color: #000; border-radius: 25px; }
-QMenu::item:selected { background-color: #dcdcdc; border-radius: 25px; }
+QMenuBar {
+    background-color: #ebebeb;
+    color: #000;
+    border-radius: 25px;
+}
+QMenuBar::item:selected {
+    background-color: #dcdcdc;
+    border-radius: 25px;
+}
+QMenu {
+    background-color: #fff;
+    color: #000;
+    border-radius: 25px;
+}
+QMenu::item:selected {
+    background-color: #dcdcdc;
+    border-radius: 25px;
+}
 QTableWidget { gridline-color: #ccc; border: 1px solid #ccc; border-radius: 25px; }
-QHeaderView::section { background-color: #f0f0f0; color: black; padding: 4px; border: 1px solid #ccc; border-radius: 25px; }
+QHeaderView::section {
+    background-color: #f0f0f0;
+    color: black;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 25px;
+}
 QDockWidget { border: 1px solid #ccc; border-radius: 25px; }
 """
     app.setStyleSheet(s)
@@ -94,7 +179,19 @@ class DragDropLineEdit(QLineEdit):
 class UserProfile:
     def __init__(self, profile_path="user_profile.json"):
         self.profile_path = profile_path
-        self.data = {"name": "", "profile_picture": "", "default_resolution": "720p", "download_path": os.getcwd(), "history_enabled": True, "theme": "Dark", "proxy": "", "social_media_links": {"instagram": "", "twitter": "", "youtube": ""}, "language": "en", "rate_limit": None}
+        self.data = {
+            "name": "",
+            "profile_picture": "",
+            "default_resolution": "720p",
+            "download_path": os.getcwd(),
+            "history_enabled": True,
+            "theme": "Dark",
+            "proxy": "",
+            "social_media_links": {"instagram": "", "twitter": "", "youtube": ""},
+            "language": "en",
+            "rate_limit": None,
+            "history": []
+        }
         self.load_profile()
     def load_profile(self):
         if os.path.exists(self.profile_path):
@@ -103,7 +200,9 @@ class UserProfile:
                     self.data = json.load(f)
                     if "social_media_links" not in self.data:
                         self.data["social_media_links"] = {"instagram": "", "twitter": "", "youtube": ""}
-                        self.save_profile()
+                    if "history" not in self.data:
+                        self.data["history"] = []
+                    self.save_profile()
                 except:
                     self.save_profile()
         else:
@@ -163,6 +262,32 @@ class UserProfile:
         self.save_profile()
     def get_rate_limit(self):
         return self.data.get("rate_limit", None)
+    def add_history(self, title, channel, url, status):
+        self.data["history"].append({
+            "title": title,
+            "channel": channel,
+            "url": url,
+            "status": status
+        })
+        self.save_profile()
+    def remove_history_by_url(self, url_list):
+        tmp = []
+        for item in self.data["history"]:
+            if item["url"] not in url_list:
+                tmp.append(item)
+        self.data["history"] = tmp
+        self.save_profile()
+    def clear_all_history(self):
+        self.data["history"] = []
+        self.save_profile()
+    def update_history_item(self, url, new_title, new_channel, new_status=None):
+        for item in self.data["history"]:
+            if item["url"] == url:
+                item["title"] = new_title
+                item["channel"] = new_channel
+                if new_status is not None:
+                    item["status"] = new_status
+        self.save_profile()
 
 class DownloadTask:
     def __init__(self, url, resolution, folder, audio_only=False, playlist=False, subtitles=False, output_format="mp4", from_queue=False, priority=1, recurrence=None, max_rate=None):
@@ -182,6 +307,7 @@ class WorkerSignals(QObject):
     progress = pyqtSignal(int, float, float, int)
     status = pyqtSignal(int, str)
     log = pyqtSignal(str)
+    info = pyqtSignal(int, str, str)
 
 class DownloadQueueWorker(QRunnable):
     cookie_text = "# Netscape HTTP Cookie File\nyoutube.com\tFALSE\t/\tFALSE\t0\tCONSENT\tYES+42\n"
@@ -192,6 +318,8 @@ class DownloadQueueWorker(QRunnable):
         self.signals = signals
         self.pause = False
         self.cancel = False
+        self.title = "Fetching..."
+        self.channel = "Fetching..."
     def run(self):
         cf_exists = os.path.exists("youtube_cookies.txt")
         if not cf_exists:
@@ -201,19 +329,29 @@ class DownloadQueueWorker(QRunnable):
         try:
             with yt_dlp.YoutubeDL(info_opts) as ydl:
                 i = ydl.extract_info(self.task.url, download=False)
-                t = i.get("title", "No Title")
-                c = i.get("uploader", "Unknown Channel")
+                self.title = i.get("title", "No Title")
+                self.channel = i.get("uploader", "Unknown Channel")
         except Exception as e:
+            err_msg = f"Failed to fetch info: {str(e)}"
             self.signals.status.emit(self.row, "Download Error")
-            self.signals.log.emit("Failed to fetch video info for " + self.task.url + "\n" + str(e))
+            self.signals.log.emit(err_msg)
+            if self.row is not None:
+                self.signals.status.emit(self.row, "Info Extraction Error")
             return
-        ydl_opts = {"outtmpl": os.path.join(self.task.folder, "%(title)s.%(ext)s"), "progress_hooks": [self.progress_hook], "noplaylist": not self.task.playlist, "cookiefile": "youtube_cookies.txt", "ratelimit": self.task.max_rate if self.task.max_rate else None}
+        self.signals.info.emit(self.row, self.title, self.channel)
+        ydl_opts = {
+            "outtmpl": os.path.join(self.task.folder, "%(title)s.%(ext)s"),
+            "progress_hooks": [self.progress_hook],
+            "noplaylist": not self.task.playlist,
+            "cookiefile": "youtube_cookies.txt",
+            "ratelimit": self.task.max_rate if self.task.max_rate else None
+        }
         if self.task.audio_only:
             ydl_opts["format"] = "bestaudio/best"
             ydl_opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
         else:
             if self.task.output_format.lower() == "mp4":
-                ydl_opts["format"] = "bestvideo[vcodec*=\"avc1\"]+bestaudio[acodec*=\"mp4a\"]/best"
+                ydl_opts["format"] = 'bestvideo[vcodec*="avc1"]+bestaudio[acodec*="mp4a"]/best'
                 ydl_opts["merge_output_format"] = "mp4"
             else:
                 ydl_opts["format"] = "bestvideo+bestaudio/best"
@@ -225,20 +363,24 @@ class DownloadQueueWorker(QRunnable):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([self.task.url])
             self.signals.status.emit(self.row, "Download Completed")
-            self.signals.log.emit("Download Completed: " + t + " by " + c)
-        except yt_dlp.utils.DownloadError as e:
+            self.signals.log.emit("Completed: " + self.title + " by " + self.channel)
+        except DownloadError as e:
             if self.cancel:
                 self.signals.status.emit(self.row, "Download Cancelled")
-                self.signals.log.emit("Download Cancelled: " + t + " by " + c)
+                self.signals.log.emit("Cancelled: " + self.title + " by " + self.channel)
             else:
                 self.signals.status.emit(self.row, "Download Error")
-                self.signals.log.emit("Download Error for " + t + " by " + c + ":\n" + str(e))
+                self.signals.log.emit("Download Error: " + str(e))
         except Exception as e:
             self.signals.status.emit(self.row, "Download Error")
-            self.signals.log.emit("Unexpected Error for " + t + " by " + c + ":\n" + str(e))
+            self.signals.log.emit("Unexpected Error: " + str(e))
     def progress_hook(self, d):
         if self.cancel:
-            raise yt_dlp.utils.DownloadError("Cancelled")
+            raise DownloadError("Cancelled")
+        while self.pause:
+            time.sleep(1)
+            if self.cancel:
+                raise DownloadError("Cancelled")
         if d["status"] == "downloading":
             downloaded = d.get("downloaded_bytes", 0)
             total = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
@@ -254,20 +396,21 @@ class DownloadQueueWorker(QRunnable):
     def pause_download(self):
         self.pause = True
         self.signals.status.emit(self.row, "Download Paused")
-        self.signals.log.emit("Download Paused")
+        self.signals.log.emit("Paused: " + self.title)
     def resume_download(self):
         self.pause = False
         self.signals.status.emit(self.row, "Download Resumed")
-        self.signals.log.emit("Download Resumed")
+        self.signals.log.emit("Resumed: " + self.title)
     def cancel_download(self):
         self.cancel = True
         self.signals.status.emit(self.row, "Download Cancelled")
-        self.signals.log.emit("Download Cancelled")
+        self.signals.log.emit("Cancelled: " + self.title)
 
 class MainWindow(QMainWindow):
     progress_signal = pyqtSignal(int, float, float, int)
     status_signal = pyqtSignal(int, str)
     log_signal = pyqtSignal(str)
+    info_signal = pyqtSignal(int, str, str)
     def __init__(self):
         super().__init__()
         self.setWindowTitle("YoutubeGO Experimental")
@@ -281,19 +424,40 @@ class MainWindow(QMainWindow):
         self.user_profile = UserProfile()
         self.thread_pool = QThreadPool()
         self.active_workers = {}
+        self.all_queue_tasks = {}
         self.max_concurrent_downloads = 3
         self.developer_mode = False
         self.verbose_logging = False
-        self.search_map = {"proxy": (4, "Proxy configuration is in Settings."), "resolution": (4, "Resolution configuration is in Settings."), "profile": (5, "Profile page for user details."), "queue": (6, "Queue page for multiple downloads."), "mp4": (1, "MP4 page for video downloads."), "mp3": (2, "MP3 page for audio downloads."), "history": (3, "History page for download logs."), "settings": (4, "Settings page for various options."), "scheduler": (7, "Scheduler for planned downloads."), "download path": (4, "Download path is in Settings."), "theme": (4, "Theme switch is in Settings."), "player": (8, "Video Player for downloaded videos.")}
+        self.search_map = {
+            "proxy": (4, "Proxy configuration is in Settings."),
+            "resolution": (4, "Resolution configuration is in Settings."),
+            "profile": (5, "Profile page for user details."),
+            "queue": (6, "Queue page for multiple downloads."),
+            "mp4": (1, "MP4 page for video downloads."),
+            "mp3": (2, "MP3 page for audio downloads."),
+            "history": (3, "History page for download logs."),
+            "settings": (4, "Settings page for various options."),
+            "scheduler": (7, "Scheduler for planned downloads."),
+            "download path": (4, "Download path is in Settings."),
+            "theme": (4, "Theme switch is in Settings."),
+            "player": (8, "Video Player for downloaded videos.")
+        }
         self.progress_signal.connect(self.update_progress)
         self.status_signal.connect(self.update_status)
         self.log_signal.connect(self.append_log)
+        self.info_signal.connect(self.update_queue_info)
         self.init_translation()
         self.init_ui()
         apply_theme(QApplication.instance(), self.user_profile.get_theme())
+        self.handle_ffmpeg_warning()
         if not self.user_profile.is_profile_complete():
             self.prompt_user_profile()
         self.create_tray_icon()
+        self.load_history_into_table()
+    def handle_ffmpeg_warning(self):
+        if not self.ffmpeg_found:
+            QMessageBox.warning(self, "FFmpeg Missing", "FFmpeg is not found on this system. Conversions or merging may fail.")
+            self.append_log("Warning: FFmpeg is missing! Some features may be limited.")
     def init_translation(self):
         lp = os.path.join(os.getcwd(), "locales")
         l = self.user_profile.get_language()
@@ -775,7 +939,6 @@ class MainWindow(QMainWindow):
         vs = QSlider(Qt.Horizontal)
         vs.setRange(0, 100)
         vs.setValue(50)
-        fs = QPushButton(self._("Fullscreen"))
         pb.clicked.connect(self.media_player.play)
         pp.clicked.connect(self.media_player.pause)
         sb.clicked.connect(self.media_player.stop)
@@ -784,7 +947,6 @@ class MainWindow(QMainWindow):
         self.media_player.durationChanged.connect(self.duration_changed)
         self.position_slider.sliderMoved.connect(self.set_position)
         vs.valueChanged.connect(self.media_player.setVolume)
-        fs.clicked.connect(self.toggle_fullscreen)
         cl.addWidget(pb)
         cl.addWidget(pp)
         cl.addWidget(sb)
@@ -793,7 +955,6 @@ class MainWindow(QMainWindow):
         cl.addWidget(self.time_label)
         cl.addWidget(QLabel(self._("Volume")))
         cl.addWidget(vs)
-        cl.addWidget(fs)
         l.addLayout(cl)
         l.addStretch()
         return w
@@ -869,11 +1030,6 @@ class MainWindow(QMainWindow):
             return f"{h:02d}:{m2:02d}:{s2:02d}"
         else:
             return f"{m2:02d}:{s2:02d}"
-    def toggle_fullscreen(self):
-        if self.video_widget.isFullScreen():
-            self.video_widget.setFullScreen(False)
-        else:
-            self.video_widget.setFullScreen(True)
     def open_video_file(self):
         p, _ = QFileDialog.getOpenFileName(self, self._("Open Video"), "", self._("Videos (*.mp4 *.mkv *.avi *.webm)"))
         if p:
@@ -990,7 +1146,6 @@ class MainWindow(QMainWindow):
             pl = cp.isChecked()
             sb = cs.isChecked()
             fo = fmc.currentText()
-            t = DownloadTask(u, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=ao, playlist=pl, subtitles=sb, output_format=fo, from_queue=True, priority=1, recurrence=None)
             r = self.queue_table.rowCount()
             self.queue_table.insertRow(r)
             self.queue_table.setItem(r, 0, QTableWidgetItem("Fetching..."))
@@ -1000,9 +1155,10 @@ class MainWindow(QMainWindow):
             if pl:
                 dt += " - " + self._("Playlist")
             self.queue_table.setItem(r, 3, QTableWidgetItem(dt))
-            self.queue_table.setItem(r, 4, QTableWidgetItem("0%"))
+            self.queue_table.setItem(r, 4, QTableWidgetItem("Queued"))
+            t = DownloadTask(u, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=ao, playlist=pl, subtitles=sb, output_format=fo, from_queue=True, priority=1, recurrence=None, max_rate=self.user_profile.get_rate_limit())
+            self.all_queue_tasks[r] = t
             self.add_history_entry("Fetching...", "Fetching...", u, self._("Queued"))
-            self.run_task(t, r)
             d.accept()
         def on_cancel():
             d.reject()
@@ -1012,22 +1168,33 @@ class MainWindow(QMainWindow):
     def start_queue(self):
         c = 0
         for r in range(self.queue_table.rowCount()):
-            si = self.queue_table.item(r, 4)
-            if si and (self._("Queued") in si.text() or "0%" in si.text()):
-                if c < self.max_concurrent_downloads:
-                    u = self.queue_table.item(r, 2).text()
-                    ty = self.queue_table.item(r, 3).text().lower()
-                    a = "audio" in ty
-                    p = "playlist" in ty
-                    f = "mp4"
-                    ri = r
-                    rl = self.user_profile.get_rate_limit()
-                    s = "download subtitles" in ty
-                    t = DownloadTask(u, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=a, playlist=p, subtitles=s, output_format=f, from_queue=True, priority=1, recurrence=None, max_rate=rl)
-                    self.run_task(t, ri)
-                    self.queue_table.setItem(r, 4, QTableWidgetItem(self._("Started")))
+            st_item = self.queue_table.item(r, 4)
+            if not st_item:
+                continue
+            current_status = st_item.text()
+            if current_status == "Queued":
+                if len(self.active_workers) < self.max_concurrent_downloads:
+                    self.run_task(self.all_queue_tasks[r], r)
+                    self.queue_table.setItem(r, 4, QTableWidgetItem("Starting"))
                     c += 1
-        self.append_log(self._("Queue started."))
+    def update_queue_info(self, row, title, channel):
+        if row is not None and row < self.queue_table.rowCount():
+            self.queue_table.setItem(row, 0, QTableWidgetItem(title))
+            self.queue_table.setItem(row, 1, QTableWidgetItem(channel))
+            url_item = self.queue_table.item(row, 2)
+            if url_item:
+                self.update_history_title_channel(url_item.text(), title, channel)
+    def update_history_title_channel(self, url, new_title, new_channel):
+        for r in range(self.history_table.rowCount()):
+            u = self.history_table.item(r, 2)
+            if u and u.text() == url:
+                self.history_table.setItem(r, 0, QTableWidgetItem(new_title))
+                self.history_table.setItem(r, 1, QTableWidgetItem(new_channel))
+                stat_item = self.history_table.item(r, 3)
+                if stat_item:
+                    self.user_profile.update_history_item(url, new_title, new_channel, stat_item.text())
+                else:
+                    self.user_profile.update_history_item(url, new_title, new_channel)
     def remove_scheduled_item(self):
         s = set()
         for it in self.scheduler_table.selectedItems():
@@ -1105,7 +1272,7 @@ class MainWindow(QMainWindow):
                 pr_ = int(self.scheduler_table.item(r, 5).text())
                 rc_ = self.scheduler_table.item(r, 6).text().lower() if self.scheduler_table.item(r, 6).text() != self._("None") else None
                 tk = DownloadTask(u, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=a_, playlist=p_, subtitles=s_, output_format="mp4", from_queue=True, priority=pr_, recurrence=rc_, max_rate=self.user_profile.get_rate_limit())
-                self.run_task(tk, r)
+                self.schedule_run_task(tk, r)
                 self.scheduler_table.setItem(r, 4, QTableWidgetItem(self._("Started")))
                 if rc_:
                     if rc_ == "daily":
@@ -1116,6 +1283,20 @@ class MainWindow(QMainWindow):
                         nd = dt_sch.addMonths(1)
                     self.scheduler_table.setItem(r, 0, QTableWidgetItem(nd.toString("yyyy-MM-dd HH:mm:ss")))
                     self.scheduler_table.setItem(r, 4, QTableWidgetItem(self._("Scheduled")))
+    def schedule_run_task(self, task, row):
+        r = self.queue_table.rowCount()
+        self.queue_table.insertRow(r)
+        self.queue_table.setItem(r, 0, QTableWidgetItem("Fetching..."))
+        self.queue_table.setItem(r, 1, QTableWidgetItem("Fetching..."))
+        self.queue_table.setItem(r, 2, QTableWidgetItem(task.url))
+        dt = "Audio" if task.audio_only else "Video"
+        self.queue_table.setItem(r, 3, QTableWidgetItem(dt))
+        self.queue_table.setItem(r, 4, QTableWidgetItem("Queued"))
+        self.all_queue_tasks[r] = task
+        self.add_history_entry("Fetching...", "Fetching...", task.url, "Queued")
+        if len(self.active_workers) < self.max_concurrent_downloads:
+            self.run_task(task, r)
+            self.queue_table.setItem(r, 4, QTableWidgetItem("Starting"))
     def start_download_simple(self, url_edit, audio=False, playlist=False):
         l = url_edit.text().strip()
         if not l:
@@ -1129,10 +1310,16 @@ class MainWindow(QMainWindow):
         self.add_history_entry("Fetching...", "Fetching...", l, self._("Queued"))
         self.run_task(t, None)
     def run_task(self, task, row):
+        if row is not None:
+            if len(self.active_workers) >= self.max_concurrent_downloads:
+                if self.queue_table.item(row, 4):
+                    self.queue_table.setItem(row, 4, QTableWidgetItem("Queued"))
+                return
         s = WorkerSignals()
         s.progress.connect(self.progress_signal.emit)
         s.status.connect(self.status_signal.emit)
         s.log.connect(self.log_signal.emit)
+        s.info.connect(self.info_signal.emit)
         w = DownloadQueueWorker(task, row, s)
         if row is not None:
             self.active_workers[row] = w
@@ -1141,15 +1328,18 @@ class MainWindow(QMainWindow):
         self.thread_pool.start(w)
     def update_progress(self, row, percent, speed, eta):
         if row is not None and row < self.queue_table.rowCount():
-            self.queue_table.setItem(row, 4, QTableWidgetItem(f"{int(percent)}%"))
+            st = f"{int(percent)}%"
+            self.queue_table.setItem(row, 4, QTableWidgetItem(st))
         self.progress_bar.setValue(int(percent))
         self.progress_bar.setFormat(f"{int(percent)}%")
         s = speed / 1024 if speed else 0
         self.status_label.setText(self._("Downloading...") + f" {percent:.2f}% - {s:.2f} KB/s - ETA: {eta}s")
     def update_status(self, row, st):
-        if row is not None and row < self.queue_table.rowCount():
-            self.queue_table.setItem(row, 4, QTableWidgetItem(st))
         self.status_label.setText(st)
+        if row is not None and row < self.queue_table.rowCount():
+            it = self.queue_table.item(row, 4)
+            if it:
+                it.setText(st)
         if "Error" in st:
             QMessageBox.critical(self, self._("Error"), st)
             self.show_notification(self._("Error"), st)
@@ -1159,7 +1349,18 @@ class MainWindow(QMainWindow):
             if c == QMessageBox.Yes:
                 self.open_download_folder()
         if row is not None and row in self.active_workers:
-            del self.active_workers[row]
+            if "Error" in st or "Completed" in st or "Cancelled" in st:
+                del self.active_workers[row]
+                self.start_next_in_queue()
+    def start_next_in_queue(self):
+        for r in range(self.queue_table.rowCount()):
+            st_item = self.queue_table.item(r, 4)
+            if st_item and st_item.text() == "Queued":
+                if len(self.active_workers) < self.max_concurrent_downloads:
+                    self.run_task(self.all_queue_tasks[r], r)
+                    self.queue_table.setItem(r, 4, QTableWidgetItem("Starting"))
+                else:
+                    break
     def open_download_folder(self):
         f = self.user_profile.get_download_path()
         if platform.system() == "Windows":
@@ -1192,17 +1393,25 @@ class MainWindow(QMainWindow):
         self.history_table.setItem(r, 1, QTableWidgetItem(channel))
         self.history_table.setItem(r, 2, QTableWidgetItem(url))
         self.history_table.setItem(r, 3, QTableWidgetItem(stat))
+        self.user_profile.add_history(title, channel, url, stat)
     def delete_selected_history(self):
         sr = set()
+        urls_to_remove = []
         for it in self.history_table.selectedItems():
             sr.add(it.row())
         for r in sorted(sr, reverse=True):
+            url_item = self.history_table.item(r, 2)
+            if url_item:
+                urls_to_remove.append(url_item.text())
             self.history_table.removeRow(r)
+        if urls_to_remove:
+            self.user_profile.remove_history_by_url(urls_to_remove)
         self.append_log(self._("Deleted {count} history entries.").format(count=len(sr)))
     def delete_all_history(self):
         ans = QMessageBox.question(self, self._("Delete All"), self._("Are you sure?"), QMessageBox.Yes | QMessageBox.No)
         if ans == QMessageBox.Yes:
             self.history_table.setRowCount(0)
+            self.user_profile.clear_all_history()
             self.append_log(self._("All history deleted."))
     def toggle_history_logging(self, state):
         en = (state == Qt.Checked)
@@ -1218,6 +1427,16 @@ class MainWindow(QMainWindow):
                     h = False
                     break
             self.history_table.setRowHidden(r, h)
+    def load_history_into_table(self):
+        if not self.user_profile.is_history_enabled():
+            return
+        for item in self.user_profile.data["history"]:
+            r = self.history_table.rowCount()
+            self.history_table.insertRow(r)
+            self.history_table.setItem(r, 0, QTableWidgetItem(item["title"]))
+            self.history_table.setItem(r, 1, QTableWidgetItem(item["channel"]))
+            self.history_table.setItem(r, 2, QTableWidgetItem(item["url"]))
+            self.history_table.setItem(r, 3, QTableWidgetItem(item["status"]))
     def set_max_concurrent_downloads(self, idx):
         v = self.concurrent_combo.currentText()
         self.max_concurrent_downloads = int(v)
@@ -1296,6 +1515,7 @@ class MainWindow(QMainWindow):
                     u = ur.text()
                     rl = self.user_profile.get_rate_limit()
                     t = DownloadTask(u, self.user_profile.get_default_resolution(), self.user_profile.get_download_path(), audio_only=False, playlist=False, max_rate=rl)
+                    self.add_history_entry("Fetching...", "Fetching...", u, self._("Queued"))
                     self.run_task(t, None)
                     c += 1
         self.append_log(self._("{count} failed downloads retried.").format(count=c))
