@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.png
+user_profile.json
+youtube_cookies.txt
+gen.py

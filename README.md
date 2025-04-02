@@ -1,71 +1,144 @@
-# YoutubeGO Experimental
+# YoutubeGO Experimental 🚀
 
-**YoutubeGO Experimental** is a YouTube downloader application with a graphical user interface built using [PyQt5](https://pypi.org/project/PyQt5/). It leverages [yt-dlp](https://github.com/yt-dlp/yt-dlp) for downloading videos and audio from YouTube and comes with various features.
+**YoutubeGO Experimental** is an advanced, feature-packed YouTube downloader built with [PyQt5](https://pypi.org/project/PyQt5/), powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp). It provides a sleek, customizable interface with extended functionality beyond basic downloaders.
 
-> **Warning:** This version may not be stable. Use at your own risk!
+> ⚠️ **Experimental Version:** This version may include unfinished or unstable features. For the stable version, visit [YoutubeGO Stable](https://github.com/Efeckc17/YoutubeGO).
 
-## Features
+---
 
-- **Download Modes:**
-  - Download videos in MP4 format.
-  - Download audio in MP3 format.
-  - Support for downloading playlists.
-  
-- **Queue & Scheduler:**
-  - Manage multiple downloads using a download queue.
-  - Schedule downloads for specific dates and times.
+## ✨ Features
 
-- **History Logging:**
-  - Log download history with details such as title, channel, URL, and status.
-  
-- **User Profile Management:**
-  - Customize your user profile with name, profile picture, and social media links.
-  
-- **Settings:**
-  - Change themes (Dark / Light).
-  - Set default resolution and download paths.
-  - Apply download speed limits.
-  
-- **Built-in Video Player:**
-  - Play downloaded videos using an integrated video player.
-  
-- **Additional Tools:**
-  - Extract video thumbnails.
-  - Simulate file format conversion.
-  
-- **Developer & Verbose Logging Modes:**
-  - Enable developer mode and verbose logging for extended functionality.
-![YoutubeGO Exp](screenshot.png)
-## Installation
+- 🎥 **Download Modes:**
+  - Download videos in MP4 format
+  - Download audio in MP3 format
+  - Playlist support
+
+- 📥 **Queue & Scheduler:**
+  - Queue multiple downloads
+  - Schedule downloads at specific times
+
+- 📜 **History Logging:**
+  - Keeps detailed download history
+
+- 👤 **User Profile:**
+  - Customize profile with name, picture, and social links
+
+- ⚙️ **Settings & Customization:**
+  - Dark/Light theme
+  - Default resolution & download path
+  - Download speed limit
+
+- ▶️ **Built-in Video Player**
+
+- 🧰 **Additional Tools:**
+  - Thumbnail extractor
+  - Basic file converter (experimental)
+
+- 🐞 **Developer & Verbose Modes**
+
+---
+
+## 📂 Project Structure
+
+```
+youtubego/
+├── core/
+│   ├── downloader.py        # Download logic & Worker classes
+│   ├── profile.py           # User profile management
+│   ├── theming.py           # Theme functions
+│   └── utils.py             # Utility functions
+├── ui/
+│   ├── main_window.py       # MainWindow Class
+│   ├── widgets.py           # Custom PyQt5 widgets
+│   └── pages/
+│       ├── home.py
+│       ├── mp4_page.py
+│       ├── mp3_page.py
+│       ├── history_page.py
+│       ├── settings_page.py
+│       ├── profile_page.py
+│       ├── queue_page.py
+│       ├── scheduler_page.py
+│       ├── player_page.py
+│       └── experimental_page.py
+├── assets/
+├── LICENSE
+├── main.py                  # Application Entry Point
+├── requirements.txt         # Dependencies
+└── README.md
+```
+
+---
+
+## 🚀 Installation & Usage
 
 ### Prerequisites
 
-- **Python:** Version 3.6 or higher.
-- **FFmpeg:** Ensure that FFmpeg is installed and added to your system’s PATH. You can download FFmpeg from the [official website](https://ffmpeg.org/download.html).
+- **Python:** Version 3.6+
+- **FFmpeg:** Required for format conversion & audio extraction ([Download Here](https://ffmpeg.org/download.html))
 
-### Dependencies
+### Setup
 
-The project uses the following Python packages:
-- [PyQt5](https://pypi.org/project/PyQt5/)
-- [yt-dlp](https://pypi.org/project/yt-dlp/)
-- [requests](https://pypi.org/project/requests/)
+1. **Clone the repository:**
 
-## Contributing
+```bash
+git clone https://github.com/Efeckc17/YoutubeGO-Experimental.git
+cd YoutubeGO-Experimental
+```
 
-Contributions are welcome! If you have suggestions or improvements, please open an issue or submit a pull request.
+2. **Install dependencies:**
 
-## Stable Version
+```bash
+pip install -r requirements.txt
+```
 
-For the stable version of YoutubeGO, visit the repository:
-[YoutubeGO Stable](https://github.com/Efeckc17/YoutubeGO)
+3. **Run the app:**
 
-## License
+```bash
+python main.py
+```
+
+---
+
+## 🧩 How to Use
+
+1. **Home:** App overview
+2. **MP4 / MP3 Pages:** Download videos or audios
+3. **Queue:** Manage multiple downloads
+4. **Scheduler:** Plan future downloads
+5. **History:** View and manage download history
+6. **Profile:** Customize user profile
+7. **Settings:** Change appearance and app options
+8. **Player:** Watch downloaded videos
+9. **Experimental:** Extra tools & dev features
+
+---
+
+## 📸 Screenshot
+
+![YoutubeGO Experimental](screenshot.png)
+
+---
+
+## 🙌 Contributing
+
+Contributions are welcome! Feel free to fork the repo and submit pull requests.
+
+---
+
+## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## Acknowledgements
+---
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for handling the download functionality.
-- [PyQt5](https://pypi.org/project/PyQt5/) for the GUI framework.
-- Thanks to all contributors and users.
+## 🙏 Acknowledgements
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [PyQt5](https://pypi.org/project/PyQt5/)
+- Special thanks to all contributors and users
+
+---
+
+**Note:** This project is under active development. Features may change or be removed in future releases.
 

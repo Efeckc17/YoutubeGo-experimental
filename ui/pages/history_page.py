@@ -1,0 +1,38 @@
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QTableWidget, QHBoxLayout, QPushButton, QCheckBox, QLineEdit
+from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
+
+def create_history_page(main_window):
+    page=QWidget()
+    layout=QVBoxLayout(page)
+    label=QLabel(main_window._("Download History"))
+    layout.addWidget(label)
+    main_window.history_table=QTableWidget()
+    main_window.history_table.setColumnCount(4)
+    main_window.history_table.setHorizontalHeaderLabels([main_window._("Title"),main_window._("Channel"),main_window._("URL"),main_window._("Status")])
+    header=main_window.history_table.horizontalHeader()
+    header.setSectionResizeMode(0,QHeaderView.Stretch)
+    header.setSectionResizeMode(1,QHeaderView.ResizeToContents)
+    header.setSectionResizeMode(2,QHeaderView.Stretch)
+    header.setSectionResizeMode(3,QHeaderView.ResizeToContents)
+    layout.addWidget(main_window.history_table)
+    button_layout=QHBoxLayout()
+    delete_selected=QPushButton(main_window._("Delete Selected"))
+    delete_selected.clicked.connect(main_window.delete_selected_history)
+    delete_all=QPushButton(main_window._("Delete All"))
+    delete_all.clicked.connect(main_window.delete_all_history)
+    history_toggle=QCheckBox(main_window._("Enable History Logging"))
+    history_toggle.setChecked(main_window.user_profile.is_history_enabled())
+    history_toggle.stateChanged.connect(main_window.toggle_history_logging)
+    for w in [delete_selected,delete_all,history_toggle]:
+        button_layout.addWidget(w)
+    layout.addLayout(button_layout)
+    search_layout=QHBoxLayout()
+    main_window.history_search_line_edit=QLineEdit()
+    main_window.history_search_line_edit.setPlaceholderText(main_window._("Search in history..."))
+    search_button=QPushButton(main_window._("Search"))
+    search_button.clicked.connect(main_window.search_history)
+    search_layout.addWidget(main_window.history_search_line_edit)
+    search_layout.addWidget(search_button)
+    layout.addLayout(search_layout)
+    layout.addStretch()
+    return page
